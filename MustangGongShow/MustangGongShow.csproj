@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows7.0</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<StartupObject>MustangGongShow.App</StartupObject>
+		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+		<UseWindowsForms>True</UseWindowsForms>
+	</PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MustangGongShow.IOC\MustangGongShow.IOC.csproj" />
+    <ProjectReference Include="..\MustangGongShow.Shell\MustangGongShow.Shell.csproj" />
+    <ProjectReference Include="..\MustangGongShow.View\MustangGongShow.View.csproj" />
+  </ItemGroup>
+
+</Project>

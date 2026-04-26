@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="MustangGongShow.Interface/MustangGongShow.Interface.csproj" />
+  <Project Path="MustangGongShow.IOC/MustangGongShow.IOC.csproj" />
+  <Project Path="MustangGongShow.Services/MustangGongShow.Services.csproj" />
+  <Project Path="MustangGongShow.Shell/MustangGongShow.Shell.csproj" />
+  <Project Path="MustangGongShow.View/MustangGongShow.View.csproj" />
+  <Project Path="MustangGongShow.ViewModel/MustangGongShow.ViewModel.csproj" />
+  <Project Path="MustangGongShow/MustangGongShow.csproj" />
+</Solution>

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MustangGongShow.TestConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "7"
+    }
+  }
+}

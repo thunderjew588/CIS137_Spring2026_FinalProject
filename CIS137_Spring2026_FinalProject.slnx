@@ -3,6 +3,7 @@
   <Project Path="MustangGongShow.IOC/MustangGongShow.IOC.csproj" />
   <Project Path="MustangGongShow.Services/MustangGongShow.Services.csproj" />
   <Project Path="MustangGongShow.Shell/MustangGongShow.Shell.csproj" />
+  <Project Path="MustangGongShow.TestConsole/MustangGongShow.TestConsole.csproj" Id="30364f0d-444a-4ccc-a103-c9134ef7ab40" />
   <Project Path="MustangGongShow.View/MustangGongShow.View.csproj" />
   <Project Path="MustangGongShow.ViewModel/MustangGongShow.ViewModel.csproj" />
   <Project Path="MustangGongShow/MustangGongShow.csproj" />

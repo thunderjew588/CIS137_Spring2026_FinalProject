@@ -2,7 +2,7 @@
   "profiles": {
     "MustangGongShow.TestConsole": {
       "commandName": "Project",
-      "commandLineArgs": "7"
+      "commandLineArgs": "\"C:\\Users\\thund\\source\\repos\\CIS137_Spring2026_FinalProject\\Chuck\\OscListener.ck\""
     }
   }
 }

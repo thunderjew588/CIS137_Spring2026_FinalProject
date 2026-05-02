@@ -12,6 +12,7 @@ TriOsc osc2 => ADSR env2 => dac;
 OscIn oin;
 OscMsg msg;
 6449 => oin.port;
+
 // Listen for this specific address and an integer
 oin.addAddress( "/wpf/note, i" ); 
 
@@ -31,13 +32,13 @@ while ( true ) {
         // Get the first integer argument
         msg.getInt(0) => int note; 
         
+        <<< "received " + note >>>;
+        
          // Do something musical with 'note' here!
-        /*playTwoBars(0, minor);
+        playTwoBars(0, minor);
         playTwoBars(-4, major);
         playTwoBars(-2, major);
-        playTwoBars(-5, major);*/
-        
-        <<< "received " + note >>>;
+        playTwoBars(-5, major);
     }
     
 }

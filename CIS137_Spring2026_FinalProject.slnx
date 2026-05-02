@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Chuck/">
+    <File Path="Chuck/OscListener.ck" />
+  </Folder>
   <Project Path="MustangGongShow.Interface/MustangGongShow.Interface.csproj" />
   <Project Path="MustangGongShow.IOC/MustangGongShow.IOC.csproj" />
   <Project Path="MustangGongShow.Services/MustangGongShow.Services.csproj" />

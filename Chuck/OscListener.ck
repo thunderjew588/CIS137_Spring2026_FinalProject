@@ -129,24 +129,35 @@ fun void processScoreCommand(OscMsg msg){
     // Get the number of commands to process
     msg.getInt(1) => int count; 
     for (2 => int i; i < count + 2; i++) {
-        msg.getString(i) => string cmd;
-        st.set(cmd);
+        msg.getString(i) => string scoreCommand;
+        st.set(scoreCommand);
+        st.next() => string cmd;
+        if (cmd.length() == 0) {
+            // There's no command
+            // TODO Do nothing?
+        }
         if (cmd == "add") {
-            // TODO
+            // Its an add, get the filename to add
+            st.next() => string filename;
+            if (filename.length() == 0) {
+                // There's no filename
+                // TODO Do nothing?
+            }
+            Machine.add(filename);
         }
         else if (cmd == "remove") {
             // TODO
         }
         else if (cmd == "play") {
-            // TODO
-        }
-        
-        /*while(true){
-            st.next() => string token;
-            if (token.length() == 0) {
-                break;
+            // Its a play, get the filename to add
+            st.next() => string raw;
+            if (raw.length() == 0) {
+                // There's no seconds
+                // TODO Do nothing?
             }
-        }*/
+            Std.atoi(raw) => int seconds;
+            beat * seconds => now;
+        }
     }
 }
 

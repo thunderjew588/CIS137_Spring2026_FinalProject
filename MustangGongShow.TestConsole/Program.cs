@@ -11,6 +11,7 @@ namespace MustangGongShow.TestConsole
         static string? s_oscListenerPath;
 
         static readonly IList<Tuple<string /*Filename*/, IDictionary<string, object> /*File parameters*/>> s_chuckFiles = [];
+        
         static readonly IList<Tuple<string /*Buffer command (add, remove, play)*/, IDictionary<string, object> /*Command args (filename + file params [for add], index [for remove], or play duration [for play])*/>> s_scoreBuffer = [];
 
 
@@ -222,22 +223,66 @@ namespace MustangGongShow.TestConsole
                     return;
 
                 var command = parts[0].ToLower();
+                var parameters = new Dictionary<string, object>();
+                Tuple<string, IDictionary<string, object>> entry;
+                string key = string.Empty;
 
                 switch (command)
                 {
-                    case "add":
-                        // Add file with parameters to s_scoreBuffer, i.e. "add filename.ck param1=value1 param2=value2"
-                        if (parts.Length < 2)
+                    case "addfile":
+                        // Add "add file" with parameters to s_scoreBuffer
+                        if (parts.Length < 3)
                         {
-                            Console.WriteLine("Usage: add <filename.ck> [param1=value1 param2=value2 ...]");
+                            Console.WriteLine("Usage: addfile <filename.ck> <key> [param1=value1 param2=value2 ...]");
                             break;
                         }
 
                         var filename = parts[1];
-                        var parameters = new Dictionary<string, object>();
+                        key = parts[2];
 
-                        // Store the filename as a parameter
+                        // Store the filename and entry key as a parameter
                         parameters["filename"] = filename;
+                        parameters["key"] = key;
+
+                        // Parse other parameters (param1=value1 param2=value2 ...)
+                        for (int i = 3; i < parts.Length; i++)
+                        {
+                            var paramParts = parts[i].Split('=', 2);
+                            if (paramParts.Length == 2)
+                            {
+                                parameters[paramParts[0]] = paramParts[1];
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Warning: Invalid parameter format '{parts[i]}'. Expected format: param=value");
+                            }
+                        }
+
+                        entry = new Tuple<string, IDictionary<string, object>>("add", parameters);
+                        s_scoreBuffer.Add(entry);
+                        Console.WriteLine($"Added to score buffer: {filename} ({key}) (entry #{s_scoreBuffer.Count})");
+
+                        if (parameters.Count > 2) // More than just filename and key
+                        {
+                            Console.WriteLine("  Parameters:");
+                            foreach (var param in parameters.Where(p => p.Key != "filename" && p.Key != "key"))
+                            {
+                                Console.WriteLine($"    {param.Key} = {param.Value}");
+                            }
+                        }
+                        break;
+                    case "addplay":
+                        // Add "play" with parameters to s_scoreBuffer
+                        if (parts.Length < 2)
+                        {
+                            Console.WriteLine("Usage: addplay <duration in seconds> [param1=value1 param2=value2 ...]");
+                            break;
+                        }
+
+                        var duration = parts[1];
+
+                        // Store the duration as a parameter
+                        parameters["duration"] = duration;
 
                         // Parse parameters (param1=value1 param2=value2 ...)
                         for (int i = 2; i < parts.Length; i++)
@@ -253,21 +298,62 @@ namespace MustangGongShow.TestConsole
                             }
                         }
 
-                        var entry = new Tuple<string, IDictionary<string, object>>("add", parameters);
+                        entry = new Tuple<string, IDictionary<string, object>>("play", parameters);
                         s_scoreBuffer.Add(entry);
-                        Console.WriteLine($"Added to score buffer: {filename} (entry #{s_scoreBuffer.Count})");
+                        Console.WriteLine($"Added to score buffer: {duration} (entry #{s_scoreBuffer.Count})");
 
-                        if (parameters.Count > 1) // More than just filename
+                        if (parameters.Count > 1) // More than just duration
                         {
                             Console.WriteLine("  Parameters:");
-                            foreach (var param in parameters.Where(p => p.Key != "filename"))
+                            foreach (var param in parameters.Where(p => p.Key != "duration"))
+                            {
+                                Console.WriteLine($"    {param.Key} = {param.Value}");
+                            }
+                        }
+                        break;
+                    case "remfile":
+                        // Add "remove file" command that takes a key to remove a file + params from the machine on the server side
+                        // NB: This is different from the "remove" command which removes entries from the local score buffer 
+                        if (parts.Length < 2)
+                        {
+                            Console.WriteLine("Usage: remfile <key>");
+                            break;
+                        }
+
+                        key = parts[1];
+
+                        // Store the file key as a parameter
+                        parameters["key"] = key;
+
+                        // Parse other parameters (param1=value1 param2=value2 ...)
+                        for (int i = 2; i < parts.Length; i++)
+                        {
+                            var paramParts = parts[i].Split('=', 2);
+                            if (paramParts.Length == 2)
+                            {
+                                parameters[paramParts[0]] = paramParts[1];
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Warning: Invalid parameter format '{parts[i]}'. Expected format: param=value");
+                            }
+                        }
+
+                        entry = new Tuple<string, IDictionary<string, object>>("remove", parameters);
+                        s_scoreBuffer.Add(entry);
+                        Console.WriteLine($"Added to score buffer: {key} (entry #{s_scoreBuffer.Count})");
+
+                        if (parameters.Count > 1) // More than just key
+                        {
+                            Console.WriteLine("  Parameters:");
+                            foreach (var param in parameters.Where(p => p.Key != "key"))
                             {
                                 Console.WriteLine($"    {param.Key} = {param.Value}");
                             }
                         }
                         break;
                     case "remove":
-                        // Remove file(s) by index or range from s_scoreBuffer, i.e. "remove 1", "remove 1 3 5", "remove 1-3", "remove 1-3 5 7-9"
+                        // Remove entries by index or range from s_scoreBuffer, i.e. "remove 1", "remove 1 3 5", "remove 1-3", "remove 1-3 5 7-9"
                         if (parts.Length < 2)
                         {
                             Console.WriteLine("Usage: remove <index|range> [index|range ...]");
@@ -372,7 +458,7 @@ namespace MustangGongShow.TestConsole
                         }
                         break;
                     case "move":
-                        // Move file from one index to another in s_scoreBuffer, i.e. "move 1 3" or "move 1-3 5"
+                        // Move entries from one index to another in s_scoreBuffer, i.e. "move 1 3" or "move 1-3 5"
                         if (parts.Length < 3)
                         {
                             Console.WriteLine("Usage: move <from-index> <to-index> or move <from-index>-<to-index> <destination>");
@@ -548,7 +634,7 @@ namespace MustangGongShow.TestConsole
                         if (s_scoreBuffer.Count == 0)
                         {
                             Console.WriteLine("Score buffer is empty.");
-                            Console.WriteLine("Use 'buffer add <filename.ck>' to add entries.");
+                            Console.WriteLine("Use 'buffer addfile <filename.ck>' or 'buffer addplay <seconds>' to add entries.");
                             break;
                         }
 
@@ -558,7 +644,26 @@ namespace MustangGongShow.TestConsole
                         for (int i = 0; i < s_scoreBuffer.Count; i++)
                         {
                             var bufferEntry = s_scoreBuffer[i];
-                            Console.WriteLine($"  [{i + 1}] Command: {bufferEntry.Item1}");
+
+                            // Display entry differently based on command type
+                            if (bufferEntry.Item1 == "add" && bufferEntry.Item2.ContainsKey("filename"))
+                            {
+                                var keyDisplay = bufferEntry.Item2.ContainsKey("key") ? $" (key: {bufferEntry.Item2["key"]})" : "";
+                                Console.WriteLine($"  [{i + 1}] ADD FILE: {bufferEntry.Item2["filename"]}{keyDisplay}");
+                            }
+                            else if (bufferEntry.Item1 == "play" && bufferEntry.Item2.ContainsKey("duration"))
+                            {
+                                var keyDisplay = bufferEntry.Item2.ContainsKey("key") ? $" (key: {bufferEntry.Item2["key"]})" : "";
+                                Console.WriteLine($"  [{i + 1}] PLAY: {bufferEntry.Item2["duration"]} seconds{keyDisplay}");
+                            }
+                            else if (bufferEntry.Item1 == "remove" && bufferEntry.Item2.ContainsKey("key"))
+                            {
+                                Console.WriteLine($"  [{i + 1}] REMOVE FILE: key = {bufferEntry.Item2["key"]}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  [{i + 1}] Command: {bufferEntry.Item1}");
+                            }
 
                             if (bufferEntry.Item2.Count == 0)
                             {
@@ -569,6 +674,13 @@ namespace MustangGongShow.TestConsole
                                 Console.WriteLine("      Parameters:");
                                 foreach (var param in bufferEntry.Item2)
                                 {
+                                    // Skip key indicators in detailed list since they're already shown in the header
+                                    if ((bufferEntry.Item1 == "add" && (param.Key == "filename" || param.Key == "key")) ||
+                                        (bufferEntry.Item1 == "play" && (param.Key == "duration" || param.Key == "key")) ||
+                                        (bufferEntry.Item1 == "remove" && param.Key == "key"))
+                                    {
+                                        continue;
+                                    }
                                     Console.WriteLine($"        {param.Key} = {param.Value}");
                                 }
                             }
@@ -1050,7 +1162,9 @@ namespace MustangGongShow.TestConsole
             Console.WriteLine("  list              - List currently loaded .ck files and their parameters");
             Console.WriteLine("  clear             - Clear all loaded .ck files");
             Console.WriteLine("  play <seconds>    - Send loaded .ck files to server and play for specified seconds");
-            Console.WriteLine("  buffer <cmd>      - Score buffer operations (add, remove, list, copy, save, load)");
+            Console.WriteLine("  buffer <cmd>      - Score buffer operations (addfile, addplay, remfile, remove, move, list, copy, clear, save, load, show)");
+
+
             Console.WriteLine("  exit              - Exit the utility");
             Console.WriteLine("  help              - Show this help message");
             Console.WriteLine();

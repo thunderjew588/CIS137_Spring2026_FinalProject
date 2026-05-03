@@ -59,6 +59,9 @@ while ( true ) {
         else if (command == "play") {
             processPlayCommand(st);
         } 
+        else if (command == "score") {
+            processScoreCommand(msg);
+        } 
         else if (command == "test"){
             // Do something musical with 'note' here!
             playTwoBars(0, minor);
@@ -118,6 +121,32 @@ fun void processPlayCommand(StringTokenizer st){
     
     for (0 => int i; i < orchCount; i++) {
         Machine.remove(activeIds[i]);
+    }
+}
+
+
+fun void processScoreCommand(OscMsg msg){
+    // Get the number of commands to process
+    msg.getInt(1) => int count; 
+    for (2 => int i; i < count + 2; i++) {
+        msg.getString(i) => string cmd;
+        st.set(cmd);
+        if (cmd == "add") {
+            // TODO
+        }
+        else if (cmd == "remove") {
+            // TODO
+        }
+        else if (cmd == "play") {
+            // TODO
+        }
+        
+        /*while(true){
+            st.next() => string token;
+            if (token.length() == 0) {
+                break;
+            }
+        }*/
     }
 }
 

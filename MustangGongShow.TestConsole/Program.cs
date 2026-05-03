@@ -68,9 +68,9 @@ namespace MustangGongShow.TestConsole
                     break;
                 case "add":
                     if (parts.Length > 1)
-                        AddChuckFile(parts[1]);
+                        AddChuckFile(input[(parts[0].Length + 1)..].Trim());
                     else
-                        Console.WriteLine("Usage: add <filename.ck>");
+                        Console.WriteLine("Usage: add <filename.ck> [param1=value1 param2=value2 ...]");
                     break;
                 case "list":
                     ListChuckFiles();
@@ -80,6 +80,9 @@ namespace MustangGongShow.TestConsole
                         RemoveChuckFile(index);
                     else
                         Console.WriteLine("Usage: remove <index>");
+                    break;
+                case "clear":
+                    ClearChuckFiles();
                     break;
                 case "play":
                     if (parts.Length > 1 && int.TryParse(parts[1], out int seconds))
@@ -200,7 +203,7 @@ namespace MustangGongShow.TestConsole
         {
             try
             {
-                SendOscMessage(command);
+                SendOscMessage([command]);
                 Console.WriteLine($"Sent OSC message: command = {command}");
                 //Thread.Sleep(100);
             }
@@ -223,25 +226,573 @@ namespace MustangGongShow.TestConsole
                 switch (command)
                 {
                     case "add":
-                        // TODO Add file with parameters, i.e. "add filename.ck param1=value1 param2=value2" 
+                        // Add file with parameters to s_scoreBuffer, i.e. "add filename.ck param1=value1 param2=value2"
+                        if (parts.Length < 2)
+                        {
+                            Console.WriteLine("Usage: add <filename.ck> [param1=value1 param2=value2 ...]");
+                            break;
+                        }
+
+                        var filename = parts[1];
+                        var parameters = new Dictionary<string, object>();
+
+                        // Store the filename as a parameter
+                        parameters["filename"] = filename;
+
+                        // Parse parameters (param1=value1 param2=value2 ...)
+                        for (int i = 2; i < parts.Length; i++)
+                        {
+                            var paramParts = parts[i].Split('=', 2);
+                            if (paramParts.Length == 2)
+                            {
+                                parameters[paramParts[0]] = paramParts[1];
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Warning: Invalid parameter format '{parts[i]}'. Expected format: param=value");
+                            }
+                        }
+
+                        var entry = new Tuple<string, IDictionary<string, object>>("add", parameters);
+                        s_scoreBuffer.Add(entry);
+                        Console.WriteLine($"Added to score buffer: {filename} (entry #{s_scoreBuffer.Count})");
+
+                        if (parameters.Count > 1) // More than just filename
+                        {
+                            Console.WriteLine("  Parameters:");
+                            foreach (var param in parameters.Where(p => p.Key != "filename"))
+                            {
+                                Console.WriteLine($"    {param.Key} = {param.Value}");
+                            }
+                        }
                         break;
                     case "remove":
-                        // TODO Remove file by index, i.e. "remove 1"
+                        // Remove file(s) by index or range from s_scoreBuffer, i.e. "remove 1", "remove 1 3 5", "remove 1-3", "remove 1-3 5 7-9"
+                        if (parts.Length < 2)
+                        {
+                            Console.WriteLine("Usage: remove <index|range> [index|range ...]");
+                            Console.WriteLine("Examples: remove 1, remove 1 3 5, remove 1-3, remove 1-3 5 7-9");
+                            break;
+                        }
+
+                        if (s_scoreBuffer.Count == 0)
+                        {
+                            Console.WriteLine("Score buffer is empty.");
+                            break;
+                        }
+
+                        // Collect all indices to remove (convert to 0-based)
+                        var indicesToRemove = new HashSet<int>();
+                        bool hasError = false;
+
+                        for (int i = 1; i < parts.Length; i++)
+                        {
+                            if (parts[i].Contains('-'))
+                            {
+                                // Handle range (e.g., "1-3")
+                                var rangeParts = parts[i].Split('-', 2);
+                                if (rangeParts.Length != 2 ||
+                                    !int.TryParse(rangeParts[0], out int rangeStart) ||
+                                    !int.TryParse(rangeParts[1], out int rangeEnd))
+                                {
+                                    Console.WriteLine($"Error: Invalid range format '{parts[i]}'. Use format: <start>-<end>");
+                                    hasError = true;
+                                    break;
+                                }
+
+                                // Convert to 0-based and validate
+                                int startIdx = rangeStart - 1;
+                                int endIdx = rangeEnd - 1;
+
+                                if (startIdx < 0 || endIdx >= s_scoreBuffer.Count || startIdx > endIdx)
+                                {
+                                    Console.WriteLine($"Error: Invalid range '{parts[i]}'. Valid range is 1-{s_scoreBuffer.Count}");
+                                    hasError = true;
+                                    break;
+                                }
+
+                                // Add all indices in the range
+                                for (int idx = startIdx; idx <= endIdx; idx++)
+                                {
+                                    indicesToRemove.Add(idx);
+                                }
+                            }
+                            else
+                            {
+                                // Handle single index
+                                if (!int.TryParse(parts[i], out int singleIndex))
+                                {
+                                    Console.WriteLine($"Error: '{parts[i]}' is not a valid number.");
+                                    hasError = true;
+                                    break;
+                                }
+
+                                // Convert to 0-based and validate
+                                int idx = singleIndex - 1;
+                                if (idx < 0 || idx >= s_scoreBuffer.Count)
+                                {
+                                    Console.WriteLine($"Error: Invalid index {singleIndex}. Valid range is 1-{s_scoreBuffer.Count}");
+                                    hasError = true;
+                                    break;
+                                }
+
+                                indicesToRemove.Add(idx);
+                            }
+                        }
+
+                        if (hasError)
+                        {
+                            break;
+                        }
+
+                        // Sort indices in descending order to remove from end to start (avoids index shifting issues)
+                        var sortedIndices = indicesToRemove.OrderByDescending(x => x).ToList();
+
+                        // Remove entries and collect information for display
+                        var removedEntries = new List<(int originalIndex, string commandName, string fileName)>();
+                        foreach (var idx in sortedIndices)
+                        {
+                            var removedEntry = s_scoreBuffer[idx];
+                            var removedFilename = removedEntry.Item2.ContainsKey("filename") ? removedEntry.Item2["filename"].ToString() : "";
+                            removedEntries.Add((idx + 1, removedEntry.Item1, removedFilename ?? ""));
+                            s_scoreBuffer.RemoveAt(idx);
+                        }
+
+                        // Display what was removed (in original order)
+                        removedEntries.Reverse();
+                        Console.WriteLine($"Removed {removedEntries.Count} entr{(removedEntries.Count == 1 ? "y" : "ies")}:");
+                        foreach (var (originalIndex, commandName, fileName) in removedEntries)
+                        {
+                            Console.Write($"  [{originalIndex}] Command: {commandName}");
+                            if (!string.IsNullOrEmpty(fileName))
+                            {
+                                Console.Write($" - {fileName}");
+                            }
+                            Console.WriteLine();
+                        }
+                        break;
+                    case "move":
+                        // Move file from one index to another in s_scoreBuffer, i.e. "move 1 3" or "move 1-3 5"
+                        if (parts.Length < 3)
+                        {
+                            Console.WriteLine("Usage: move <from-index> <to-index> or move <from-index>-<to-index> <destination>");
+                            break;
+                        }
+
+                        if (s_scoreBuffer.Count == 0)
+                        {
+                            Console.WriteLine("Score buffer is empty.");
+                            break;
+                        }
+
+                        // Check if it's a range move (e.g., "1-3")
+                        if (parts[1].Contains('-'))
+                        {
+                            var rangeParts = parts[1].Split('-', 2);
+                            if (rangeParts.Length != 2 ||
+                                !int.TryParse(rangeParts[0], out int rangeStart) ||
+                                !int.TryParse(rangeParts[1], out int rangeEnd) ||
+                                !int.TryParse(parts[2], out int rangeDest))
+                            {
+                                Console.WriteLine("Error: Invalid range format. Use format: move <start>-<end> <destination>");
+                                break;
+                            }
+
+                            // Convert to 0-based indices
+                            int startIdx = rangeStart - 1;
+                            int endIdx = rangeEnd - 1;
+                            int destIdx = rangeDest - 1;
+
+                            // Validate indices
+                            if (startIdx < 0 || startIdx >= s_scoreBuffer.Count ||
+                                endIdx < 0 || endIdx >= s_scoreBuffer.Count ||
+                                startIdx > endIdx)
+                            {
+                                Console.WriteLine($"Error: Invalid range. Valid range is 1-{s_scoreBuffer.Count}");
+                                break;
+                            }
+
+                            if (destIdx < 0 || destIdx > s_scoreBuffer.Count)
+                            {
+                                Console.WriteLine($"Error: Invalid destination. Valid range is 1-{s_scoreBuffer.Count}");
+                                break;
+                            }
+
+                            // Extract the range of entries
+                            int count = endIdx - startIdx + 1;
+                            var movedEntries = new List<Tuple<string, IDictionary<string, object>>>();
+                            for (int i = startIdx; i <= endIdx; i++)
+                            {
+                                movedEntries.Add(s_scoreBuffer[i]);
+                            }
+
+                            // Remove the entries from their original positions
+                            for (int i = 0; i < count; i++)
+                            {
+                                s_scoreBuffer.RemoveAt(startIdx);
+                            }
+
+                            // Adjust destination index if needed (if destination was after the removed range)
+                            if (destIdx > startIdx)
+                            {
+                                destIdx -= count;
+                            }
+
+                            // Insert at the new position
+                            for (int i = 0; i < movedEntries.Count; i++)
+                            {
+                                s_scoreBuffer.Insert(destIdx + i, movedEntries[i]);
+                            }
+
+                            Console.WriteLine($"Moved entries [{rangeStart}-{rangeEnd}] to position {rangeDest}");
+                        }
+                        else
+                        {
+                            // Single entry move
+                            if (!int.TryParse(parts[1], out int fromIndex) ||
+                                !int.TryParse(parts[2], out int toIndex))
+                            {
+                                Console.WriteLine("Error: Indices must be valid numbers.");
+                                break;
+                            }
+
+                            // Convert to 0-based indices
+                            int fromIdx = fromIndex - 1;
+                            int toIdx = toIndex - 1;
+
+                            // Validate indices
+                            if (fromIdx < 0 || fromIdx >= s_scoreBuffer.Count)
+                            {
+                                Console.WriteLine($"Error: Invalid from-index. Valid range is 1-{s_scoreBuffer.Count}");
+                                break;
+                            }
+
+                            if (toIdx < 0 || toIdx >= s_scoreBuffer.Count)
+                            {
+                                Console.WriteLine($"Error: Invalid to-index. Valid range is 1-{s_scoreBuffer.Count}");
+                                break;
+                            }
+
+                            if (fromIdx == toIdx)
+                            {
+                                Console.WriteLine("Source and destination are the same.");
+                                break;
+                            }
+
+                            // Remove from old position
+                            var movedEntry = s_scoreBuffer[fromIdx];
+                            s_scoreBuffer.RemoveAt(fromIdx);
+
+                            // Adjust toIndex if needed
+                            if (toIdx > fromIdx)
+                            {
+                                toIdx--;
+                            }
+
+                            // Insert at new position
+                            s_scoreBuffer.Insert(toIdx, movedEntry);
+
+                            Console.Write($"Moved: [{fromIndex}] to [{toIndex}] - Command: {movedEntry.Item1}");
+                            if (movedEntry.Item2.ContainsKey("filename"))
+                            {
+                                Console.Write($" - {movedEntry.Item2["filename"]}");
+                            }
+                            Console.WriteLine();
+                        }
                         break;
                     case "copy":
-                        // TODO Take contents of s_chuckFiles and append to end of s_scoreBuffer as "add" commands with parameters, clearing s_chuckFiles if optional parameter is passes as "clear", i.e. "copy" would take each entry in s_chuckFiles and create a corresponding entry in s_scoreBuffer with the command "add" and the same parameters, then clear s_chuckFiles if "clear" is included as an optional parameter, i.e. "copy clear"
+                        // Take contents of s_chuckFiles and append to end of s_scoreBuffer as "add" commands with parameters
+                        // Optional "clear" parameter will clear s_chuckFiles after copying
+                        if (s_chuckFiles.Count == 0)
+                        {
+                            Console.WriteLine("No ChucK files to copy. Use 'add' command to add files first.");
+                            break;
+                        }
+
+                        bool clearAfterCopy = parts.Length > 1 && parts[1].ToLower() == "clear";
+
+                        int copiedCount = 0;
+                        foreach (var chuckFileEntry in s_chuckFiles)
+                        {
+                            // Create a new dictionary with the filename and all parameters
+                            var bufferParameters = new Dictionary<string, object>();
+                            bufferParameters["filename"] = chuckFileEntry.Item1;
+
+                            // Copy all parameters from the chuck file entry
+                            foreach (var param in chuckFileEntry.Item2)
+                            {
+                                bufferParameters[param.Key] = param.Value;
+                            }
+
+                            // Add to score buffer as an "add" command
+                            var bufferEntry = new Tuple<string, IDictionary<string, object>>("add", bufferParameters);
+                            s_scoreBuffer.Add(bufferEntry);
+                            copiedCount++;
+                        }
+
+                        Console.WriteLine($"Copied {copiedCount} entr{(copiedCount == 1 ? "y" : "ies")} from ChucK files to score buffer.");
+
+                        if (clearAfterCopy)
+                        {
+                            s_chuckFiles.Clear();
+                            Console.WriteLine("Cleared ChucK files collection.");
+                        }
+                        break;
+                    case "clear":
+                        // Clear all entries from score buffer
+                        s_scoreBuffer.Clear();
+                        Console.WriteLine("Cleared score buffer.");
                         break;
                     case "list":
-                        // TODO List contents of score buffer with index numbers, i.e. "list" would print out each entry in s_scoreBuffer with its index number and command and parameters, similar to how ListChuckFiles prints out the contents of s_chuckFiles
+                        // List contents of score buffer with index numbers
+                        if (s_scoreBuffer.Count == 0)
+                        {
+                            Console.WriteLine("Score buffer is empty.");
+                            Console.WriteLine("Use 'buffer add <filename.ck>' to add entries.");
+                            break;
+                        }
+
+                        Console.WriteLine($"Score buffer contents ({s_scoreBuffer.Count} total):");
+                        Console.WriteLine();
+
+                        for (int i = 0; i < s_scoreBuffer.Count; i++)
+                        {
+                            var bufferEntry = s_scoreBuffer[i];
+                            Console.WriteLine($"  [{i + 1}] Command: {bufferEntry.Item1}");
+
+                            if (bufferEntry.Item2.Count == 0)
+                            {
+                                Console.WriteLine("      Parameters: (none)");
+                            }
+                            else
+                            {
+                                Console.WriteLine("      Parameters:");
+                                foreach (var param in bufferEntry.Item2)
+                                {
+                                    Console.WriteLine($"        {param.Key} = {param.Value}");
+                                }
+                            }
+                            Console.WriteLine();
+                        }
                         break;
                     case "flush":
-                        // TODO TBD - Don't do anything here yet
+                        // TODO TBD - Don't do anything here yet - what this will do is send the score buffer entries to the server in one batch i.e. send all the "add filename.ck param=value" commands in the buffer
                         break;
                     case "save":
-                        // TODO Save score buffer to file, i.e. "save filename.txt" would save the contents of s_scoreBuffer to a text file in a human-readable format that includes the command and parameters for each entry, along with the index number, similar to how ListChuckFiles prints out the contents of s_chuckFiles but in a format that can be easily read and parsed later when loading, i.e. each line in the file could represent one entry in s_scoreBuffer with the index number, command, and parameters all included in a structured format that can be parsed when loading, i.e. "1: add filename.ck param1=value1 param2=value2"
+                        // Save score buffer to file with .mgs extension
+                        if (parts.Length < 2)
+                        {
+                            Console.WriteLine("Usage: save <filename>");
+                            break;
+                        }
+
+                        if (s_scoreBuffer.Count == 0)
+                        {
+                            Console.WriteLine("Score buffer is empty. Nothing to save.");
+                            break;
+                        }
+
+                        try
+                        {
+                            var saveFilename = parts[1];
+
+                            // Add .mgs extension if not present
+                            if (!saveFilename.EndsWith(".mgs", StringComparison.OrdinalIgnoreCase))
+                            {
+                                saveFilename += ".mgs";
+                            }
+
+                            // Get the listener directory to save the file there
+                            var listenerDirectory = Path.GetDirectoryName(s_oscListenerPath);
+                            if (string.IsNullOrEmpty(listenerDirectory))
+                            {
+                                Console.WriteLine("Error: Could not determine listener directory.");
+                                break;
+                            }
+
+                            var fullPath = Path.Combine(listenerDirectory, saveFilename);
+
+                            // Build JSON content
+                            var jsonLines = new List<string>();
+                            jsonLines.Add("{");
+                            jsonLines.Add("  \"scoreBuffer\": [");
+
+                            for (int i = 0; i < s_scoreBuffer.Count; i++)
+                            {
+                                var bufferEntry = s_scoreBuffer[i];
+                                jsonLines.Add("    {");
+                                jsonLines.Add($"      \"index\": {i + 1},");
+                                jsonLines.Add($"      \"command\": \"{bufferEntry.Item1}\",");
+                                jsonLines.Add("      \"parameters\": {");
+
+                                var paramList = new List<string>();
+                                foreach (var param in bufferEntry.Item2)
+                                {
+                                    // Escape quotes in values
+                                    var value = param.Value.ToString()?.Replace("\"", "\\\"") ?? "";
+                                    paramList.Add($"        \"{param.Key}\": \"{value}\"");
+                                }
+
+                                jsonLines.Add(string.Join(",\n", paramList));
+                                jsonLines.Add("      }");
+
+                                if (i < s_scoreBuffer.Count - 1)
+                                {
+                                    jsonLines.Add("    },");
+                                }
+                                else
+                                {
+                                    jsonLines.Add("    }");
+                                }
+                            }
+
+                            jsonLines.Add("  ]");
+                            jsonLines.Add("}");
+
+                            // Write to file
+                            File.WriteAllText(fullPath, string.Join(Environment.NewLine, jsonLines));
+                            Console.WriteLine($"Saved {s_scoreBuffer.Count} entr{(s_scoreBuffer.Count == 1 ? "y" : "ies")} to: {fullPath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error saving score buffer: {ex.Message}");
+                        }
                         break;
                     case "load":
-                        // TODO Load score buffer from file, i.e. "load filename.txt" would read a text file in the same format as the "save" command outputs and populate s_scoreBuffer with entries based on the contents of the file, parsing out the index number, command, and parameters for each entry and creating corresponding entries in s_scoreBuffer, i.e. each line in the file would be parsed to extract the command and parameters and create an entry in s_scoreBuffer with that information
+                        // Load score buffer from .mgs file
+                        if (parts.Length < 2)
+                        {
+                            Console.WriteLine("Usage: load <filename>");
+                            break;
+                        }
+
+                        try
+                        {
+                            var loadFilename = parts[1];
+
+                            // Add .mgs extension if not present
+                            if (!loadFilename.EndsWith(".mgs", StringComparison.OrdinalIgnoreCase))
+                            {
+                                loadFilename += ".mgs";
+                            }
+
+                            // Get the listener directory to load the file from
+                            var listenerDirectory = Path.GetDirectoryName(s_oscListenerPath);
+                            if (string.IsNullOrEmpty(listenerDirectory))
+                            {
+                                Console.WriteLine("Error: Could not determine listener directory.");
+                                break;
+                            }
+
+                            var fullPath = Path.Combine(listenerDirectory, loadFilename);
+
+                            if (!File.Exists(fullPath))
+                            {
+                                Console.WriteLine($"Error: File not found: {fullPath}");
+                                Console.WriteLine("Use 'buffer show' to see available .mgs files.");
+                                break;
+                            }
+
+                            // Read and parse JSON file
+                            var jsonContent = File.ReadAllText(fullPath);
+                            using var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonContent);
+
+                            var root = jsonDoc.RootElement;
+                            if (!root.TryGetProperty("scoreBuffer", out var scoreBufferArray))
+                            {
+                                Console.WriteLine("Error: Invalid .mgs file format - missing 'scoreBuffer' property.");
+                                break;
+                            }
+
+                            // Clear existing buffer
+                            s_scoreBuffer.Clear();
+
+                            // Load entries
+                            int loadedCount = 0;
+                            foreach (var entryElement in scoreBufferArray.EnumerateArray())
+                            {
+                                if (!entryElement.TryGetProperty("command", out var commandElement))
+                                {
+                                    Console.WriteLine($"Warning: Skipping entry without 'command' property.");
+                                    continue;
+                                }
+
+                                var commandName = commandElement.GetString();
+                                if (string.IsNullOrEmpty(commandName))
+                                {
+                                    Console.WriteLine($"Warning: Skipping entry with empty command.");
+                                    continue;
+                                }
+
+                                var entryParameters = new Dictionary<string, object>();
+
+                                if (entryElement.TryGetProperty("parameters", out var paramsElement))
+                                {
+                                    foreach (var param in paramsElement.EnumerateObject())
+                                    {
+                                        entryParameters[param.Name] = param.Value.GetString() ?? "";
+                                    }
+                                }
+
+                                var bufferEntry = new Tuple<string, IDictionary<string, object>>(commandName, entryParameters);
+                                s_scoreBuffer.Add(bufferEntry);
+                                loadedCount++;
+                            }
+
+                            Console.WriteLine($"Loaded {loadedCount} entr{(loadedCount == 1 ? "y" : "ies")} from: {fullPath}");
+                        }
+                        catch (System.Text.Json.JsonException ex)
+                        {
+                            Console.WriteLine($"Error parsing JSON file: {ex.Message}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error loading score buffer: {ex.Message}");
+                        }
+                        break;
+                    case "show":
+                        // Show MGS files in the listener directory
+                        if (string.IsNullOrEmpty(s_oscListenerPath))
+                        {
+                            Console.WriteLine("Error: OscListener.ck path is not set.");
+                            break;
+                        }
+
+                        try
+                        {
+                            var listenerDirectory = Path.GetDirectoryName(s_oscListenerPath);
+
+                            if (string.IsNullOrEmpty(listenerDirectory) || !Directory.Exists(listenerDirectory))
+                            {
+                                Console.WriteLine($"Error: Directory not found: {listenerDirectory}");
+                                break;
+                            }
+
+                            var mgsFiles = Directory.GetFiles(listenerDirectory, "*.mgs")
+                                .Select(Path.GetFileName)
+                                .OrderBy(f => f)
+                                .ToList();
+
+                            if (mgsFiles.Count == 0)
+                            {
+                                Console.WriteLine("No .mgs files found in the listener directory.");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"MGS files in {listenerDirectory}:");
+                                foreach (var file in mgsFiles)
+                                {
+                                    Console.WriteLine($"  {file}");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error listing MGS files: {ex.Message}");
+                        }
+                        break;
+                    case "help":
+                        // TODO Provide help for buffer ops specifically, i.e. "buffer help" would display information about how to use the buffer commands and their syntax, similar to how ShowHelp() works but focused on the buffer operations
                         break;
                     default:
                         Console.WriteLine($"Unknown command: {command}. Type 'help' for available commands.");
@@ -255,9 +806,9 @@ namespace MustangGongShow.TestConsole
             }
         }
 
-        private static void SendOscMessage(string command)
+        private static void SendOscMessage(IEnumerable<string> commands)
         {
-            object[] oscArgs = new object[] { command };
+            object[] oscArgs = [.. commands.Cast<object>()];
             var message = new OscMessage("/chuck-daemon/cmd", oscArgs);
             s_sender.Send(message);
         }
@@ -319,7 +870,7 @@ namespace MustangGongShow.TestConsole
             }
         }
 
-        static void AddChuckFile(string filename)
+        static void AddChuckFile(string fileAndParams)
         {
             if (string.IsNullOrEmpty(s_oscListenerPath))
             {
@@ -329,6 +880,31 @@ namespace MustangGongShow.TestConsole
 
             try
             {
+                // Parse filename and parameters
+                var parts = fileAndParams.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0)
+                {
+                    Console.WriteLine("Usage: add <filename.ck> [param1=value1 param2=value2 ...]");
+                    return;
+                }
+
+                var filename = parts[0];
+                var parameters = new Dictionary<string, object>();
+
+                // Parse parameters (param1=value1 param2=value2 ...)
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    var paramParts = parts[i].Split('=', 2);
+                    if (paramParts.Length == 2)
+                    {
+                        parameters[paramParts[0]] = paramParts[1];
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: Invalid parameter format '{parts[i]}'. Expected format: param=value");
+                    }
+                }
+
                 var listenerDirectory = Path.GetDirectoryName(s_oscListenerPath);
                 var listenerFileName = Path.GetFileName(s_oscListenerPath);
 
@@ -355,13 +931,22 @@ namespace MustangGongShow.TestConsole
                     return;
                 }
 
-                // Add the file with an empty dictionary (allow duplicates for different parameterizations)
+                // Add the file with parameters (allow duplicates for different parameterizations)
                 var newEntry = new Tuple<string, IDictionary<string, object>>(
                     matchingFile, 
-                    new Dictionary<string, object>());
+                    parameters);
 
                 s_chuckFiles.Add(newEntry);
                 Console.WriteLine($"Added: {matchingFile} (entry #{s_chuckFiles.Count})");
+
+                if (parameters.Count > 0)
+                {
+                    Console.WriteLine("  Parameters:");
+                    foreach (var param in parameters)
+                    {
+                        Console.WriteLine($"    {param.Key} = {param.Value}");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -424,24 +1009,32 @@ namespace MustangGongShow.TestConsole
             Console.WriteLine($"Removed: [{index}] {removedFile.Item1}");
         }
 
+        static void ClearChuckFiles()
+        {
+            if (s_chuckFiles.Count == 0)
+            {
+                Console.WriteLine("No ChucK files currently loaded.");
+                return;
+            }
+
+            int count = s_chuckFiles.Count;
+            s_chuckFiles.Clear();
+            Console.WriteLine($"Cleared {count} ChucK file{(count == 1 ? "" : "s")}.");
+        }
+
         static void PlayChuckFiles(int seconds)
         {
             // This is a temporary implementation that will use the SendOscMessage method to add files one at a time, then send a play command with the specified duration, then send the remove commands
             foreach (var entry in s_chuckFiles)
             {
-                SendOscMessage($"add {entry.Item1}");
-                //Thread.Sleep(100);
+                SendOscMessage([$"add {entry.Item1}"]);
             }
 
-            SendOscMessage($"play {seconds}");
-
-            // Wait for the specified duration before sending remove commands
-            //Thread.Sleep(seconds * 1000);
+            SendOscMessage([$"play {seconds}"]);
 
             foreach (var entry in s_chuckFiles)
             {
-                SendOscMessage($"remove {entry.Item1}");
-                //Thread.Sleep(100);
+                SendOscMessage([$"remove {entry.Item1}"]);
             }
         }
 
@@ -455,10 +1048,14 @@ namespace MustangGongShow.TestConsole
             Console.WriteLine("  add <filename>    - Add a .ck file to the collection");
             Console.WriteLine("  remove <index>    - Remove a .ck file by its index number");
             Console.WriteLine("  list              - List currently loaded .ck files and their parameters");
+            Console.WriteLine("  clear             - Clear all loaded .ck files");
             Console.WriteLine("  play <seconds>    - Send loaded .ck files to server and play for specified seconds");
-            Console.WriteLine("  send <cmd> <args> - Send OSC message with command and arguments (DEPRECATED)");
+            Console.WriteLine("  buffer <cmd>      - Score buffer operations (add, remove, list, copy, save, load)");
             Console.WriteLine("  exit              - Exit the utility");
             Console.WriteLine("  help              - Show this help message");
+            Console.WriteLine();
+            Console.WriteLine("Deprecated commands:");
+            Console.WriteLine("  send <cmd> <args> - Send OSC message with command and arguments");
             Console.WriteLine();
         }
     }

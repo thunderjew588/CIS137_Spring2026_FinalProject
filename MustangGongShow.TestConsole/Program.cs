@@ -14,8 +14,8 @@ namespace MustangGongShow.TestConsole
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Error: Path to OscListener.ck file is required.");
-                Console.WriteLine("Usage: MustangGongShow.TestConsole.exe <path-to-osclistener.ck>");
+                Console.WriteLine("Error: Path to Listener ck file is required.");
+                Console.WriteLine("Usage: MustangGongShow.TestConsole.exe <path-to-listener.ck>");
                 return;
             }
 
@@ -60,10 +60,10 @@ namespace MustangGongShow.TestConsole
                     GetListenerStatus();
                     break;
                 case "send":
-                    if (parts.Length > 1 && int.TryParse(parts[1], out int noteValue))
-                        SendMessage(noteValue);
+                    if (parts.Length > 1)
+                        SendMessage(input[(parts[0].Length + 1)..].Trim());
                     else
-                        Console.WriteLine("Usage: send <note_value>");
+                        Console.WriteLine("Usage: send <command>");
                     break;
                 case "exit":
                 case "quit":
@@ -90,7 +90,7 @@ namespace MustangGongShow.TestConsole
             {
                 if (!File.Exists(s_oscListenerPath))
                 {
-                    Console.WriteLine($"Error: osclistener.ck not found at: {s_oscListenerPath}");
+                    Console.WriteLine($"Error: File not found at: {s_oscListenerPath}");
                     return;
                 }
 
@@ -162,15 +162,15 @@ namespace MustangGongShow.TestConsole
             }
         }
 
-        static void SendMessage(int noteValue)
+        static void SendMessage(string command)
         {
             try
             {
-                object[] oscArgs = [noteValue];
-                var message = new OscMessage("/wpf/note", oscArgs);
+                object[] oscArgs = new object[] { command };
+                var message = new OscMessage("/chuck-daemon/cmd", oscArgs);
 
                 s_sender.Send(message);
-                Console.WriteLine($"Sent OSC message: note = {noteValue}");
+                Console.WriteLine($"Sent OSC message: command = {command}");
                 Thread.Sleep(100);
             }
             catch (Exception ex)

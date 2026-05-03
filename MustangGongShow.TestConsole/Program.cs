@@ -688,7 +688,76 @@ namespace MustangGongShow.TestConsole
                         }
                         break;
                     case "flush":
-                        // TODO TBD - Don't do anything here yet - what this will do is send the score buffer entries to the server in one batch i.e. send all the "add filename.ck param=value" commands in the buffer
+                        // Send the score buffer entries to the server in one batch
+                        if (s_scoreBuffer.Count == 0)
+                        {
+                            Console.WriteLine("Score buffer is empty. Nothing to flush.");
+                            break;
+                        }
+
+                        // Build OSC arguments array
+                        var flushArgs = new List<object>();
+                        flushArgs.Add("score");  // 1st argument
+                        flushArgs.Add(s_scoreBuffer.Count);  // 2nd argument (number of commands)
+
+                        // Build command strings for each entry in the buffer
+                        foreach (var bufferEntry in s_scoreBuffer)
+                        {
+                            var commandString = "";
+
+                            if (bufferEntry.Item1 == "add")
+                            {
+                                // Format: "add <filename.ck> <key> param1=value1 param2=value2..."
+                                if (bufferEntry.Item2.ContainsKey("filename") && bufferEntry.Item2.ContainsKey("key"))
+                                {
+                                    commandString = $"add {bufferEntry.Item2["filename"]} {bufferEntry.Item2["key"]}";
+
+                                    // Add other parameters
+                                    foreach (var param in bufferEntry.Item2)
+                                    {
+                                        if (param.Key != "filename" && param.Key != "key")
+                                        {
+                                            commandString += $" {param.Key}={param.Value}";
+                                        }
+                                    }
+                                }
+                            }
+                            else if (bufferEntry.Item1 == "play")
+                            {
+                                // Format: "play <duration> param1=value1 param2=value2..."
+                                if (bufferEntry.Item2.ContainsKey("duration"))
+                                {
+                                    commandString = $"play {bufferEntry.Item2["duration"]}";
+
+                                    // Add other parameters
+                                    foreach (var param in bufferEntry.Item2)
+                                    {
+                                        if (param.Key != "duration")
+                                        {
+                                            commandString += $" {param.Key}={param.Value}";
+                                        }
+                                    }
+                                }
+                            }
+                            else if (bufferEntry.Item1 == "remove")
+                            {
+                                // Format: "remove <key>"
+                                if (bufferEntry.Item2.ContainsKey("key"))
+                                {
+                                    commandString = $"remove {bufferEntry.Item2["key"]}";
+                                }
+                            }
+
+                            if (!string.IsNullOrEmpty(commandString))
+                            {
+                                flushArgs.Add(commandString);
+                            }
+                        }
+
+                        // Send the OSC message directly
+                        var flushMessage = new OscMessage("/chuck-daemon/cmd", flushArgs.ToArray());
+                        s_sender.Send(flushMessage);
+                        Console.WriteLine($"Flushed {s_scoreBuffer.Count} command{(s_scoreBuffer.Count == 1 ? "" : "s")} to server.");
                         break;
                     case "save":
                         // Save score buffer to file with .mgs extension

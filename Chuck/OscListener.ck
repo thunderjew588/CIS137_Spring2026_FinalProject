@@ -126,39 +126,59 @@ fun void processPlayCommand(StringTokenizer st){
 
 
 fun void processScoreCommand(OscMsg msg){
+    
     // Get the number of commands to process
     msg.getInt(1) => int count; 
     for (2 => int i; i < count + 2; i++) {
+        
         msg.getString(i) => string scoreCommand;
+        
         st.set(scoreCommand);
         st.next() => string cmd;
         if (cmd.length() == 0) {
             // There's no command
-            // TODO Do nothing?
+            // TODO Write message to console, exit
         }
+        
         if (cmd == "add") {
-            // Its an add, get the filename to add
+            // Its an add, get the filename to add...
             st.next() => string filename;
             if (filename.length() == 0) {
                 // There's no filename
-                // TODO Do nothing?
+                // TODO Write message to console, exit
             }
-            Machine.add(filename);
+            // ... and the key
+            st.next() => string key;
+            if (key.length() == 0) {
+                // There's no key
+                // TODO Write message to console, exit
+            }
+            Machine.add(filename) => int id;
+            // TODO Store the id in a dictionary indexed on key
         }
         else if (cmd == "remove") {
-            // TODO
+            // Get the key...
+            st.next() => string key;
+            if (key.length() == 0) {
+                // There's no key
+                // TODO Write message to console, exit
+            }
+            // TODO Use the key to get the id
+            0 => int id; // TODO This is just a placeholder
+            Machine.remove(id);
         }
         else if (cmd == "play") {
             // Its a play, get the filename to add
             st.next() => string raw;
             if (raw.length() == 0) {
                 // There's no seconds
-                // TODO Do nothing?
+                // TODO Write message to console, exit
             }
             Std.atoi(raw) => int seconds;
             beat * seconds => now;
         }
     }
+    
 }
 
 fun void playTwoBars(int position, int chord[])

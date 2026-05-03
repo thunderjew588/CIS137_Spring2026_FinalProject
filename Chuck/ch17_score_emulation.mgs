@@ -1,0 +1,319 @@
+{
+  "scoreBuffer": [
+    {
+      "index": 1,
+      "command": "add",
+      "parameters": {
+        "filename": "kick-snare.ck",
+        "key": "kick-snare"
+      }
+    },
+    {
+      "index": 2,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 3,
+      "command": "add",
+      "parameters": {
+        "filename": "Bass2.ck",
+        "key": "Bass2"
+      }
+    },
+    {
+      "index": 4,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 5,
+      "command": "add",
+      "parameters": {
+        "filename": "hi-hat.ck",
+        "key": "hi-hat"
+      }
+    },
+    {
+      "index": 6,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 7,
+      "command": "remove",
+      "parameters": {
+        "key": "kick-snare"
+      }
+    },
+    {
+      "index": 8,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 9,
+      "command": "remove",
+      "parameters": {
+        "key": "Bass2"
+      }
+    },
+    {
+      "index": 10,
+      "command": "remove",
+      "parameters": {
+        "key": "hi-hat"
+      }
+    },
+    {
+      "index": 11,
+      "command": "add",
+      "parameters": {
+        "filename": "pad.ck",
+        "key": "pad"
+      }
+    },
+    {
+      "index": 12,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 13,
+      "command": "add",
+      "parameters": {
+        "filename": "Bass1.ck",
+        "key": "Bass1"
+      }
+    },
+    {
+      "index": 14,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 15,
+      "command": "add",
+      "parameters": {
+        "filename": "panning1.ck",
+        "key": "panning1"
+      }
+    },
+    {
+      "index": 16,
+      "command": "add",
+      "parameters": {
+        "filename": "hi-hat.ck",
+        "key": "hi-hat"
+      }
+    },
+    {
+      "index": 17,
+      "command": "add",
+      "parameters": {
+        "filename": "kick-snare.ck",
+        "key": "kick-snare"
+      }
+    },
+    {
+      "index": 18,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 19,
+      "command": "remove",
+      "parameters": {
+        "key": "Bass1"
+      }
+    },
+    {
+      "index": 20,
+      "command": "remove",
+      "parameters": {
+        "key": "pad"
+      }
+    },
+    {
+      "index": 21,
+      "command": "add",
+      "parameters": {
+        "filename": "Bass2.ck",
+        "key": "Bass2"
+      }
+    },
+    {
+      "index": 22,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 23,
+      "command": "add",
+      "parameters": {
+        "filename": "pad.ck",
+        "key": "pad"
+      }
+    },
+    {
+      "index": 24,
+      "command": "remove",
+      "parameters": {
+        "key": "kick-snare"
+      }
+    },
+    {
+      "index": 25,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 26,
+      "command": "remove",
+      "parameters": {
+        "key": "pad"
+      }
+    },
+    {
+      "index": 27,
+      "command": "remove",
+      "parameters": {
+        "key": "hi-hat"
+      }
+    },
+    {
+      "index": 28,
+      "command": "add",
+      "parameters": {
+        "filename": "kick-snare.ck",
+        "key": "kick-snare"
+      }
+    },
+    {
+      "index": 29,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 30,
+      "command": "add",
+      "parameters": {
+        "filename": "pad.ck",
+        "key": "pad"
+      }
+    },
+    {
+      "index": 31,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 32,
+      "command": "remove",
+      "parameters": {
+        "key": "pad"
+      }
+    },
+    {
+      "index": 33,
+      "command": "add",
+      "parameters": {
+        "filename": "Bass1.ck",
+        "key": "Bass1"
+      }
+    },
+    {
+      "index": 34,
+      "command": "play",
+      "parameters": {
+        "duration": "8"
+      }
+    },
+    {
+      "index": 35,
+      "command": "add",
+      "parameters": {
+        "filename": "hi-hat.ck",
+        "key": "hi-hat"
+      }
+    },
+    {
+      "index": 36,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 37,
+      "command": "remove",
+      "parameters": {
+        "key": "panning1"
+      }
+    },
+    {
+      "index": 38,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 39,
+      "command": "remove",
+      "parameters": {
+        "key": "hi-hat"
+      }
+    },
+    {
+      "index": 40,
+      "command": "remove",
+      "parameters": {
+        "key": "kick-snare"
+      }
+    },
+    {
+      "index": 41,
+      "command": "play",
+      "parameters": {
+        "duration": "16"
+      }
+    },
+    {
+      "index": 42,
+      "command": "remove",
+      "parameters": {
+        "key": "Base1"
+      }
+    },
+    {
+      "index": 43,
+      "command": "remove",
+      "parameters": {
+        "key": "Base2"
+      }
+    }
+  ]
+}

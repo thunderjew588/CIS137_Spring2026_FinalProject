@@ -31,7 +31,7 @@ namespace MustangGongShow.TestConsole
             Console.WriteLine($"OscListener.ck path: {args[0]}");
             Console.WriteLine();
 
-            ShowHelp();
+            //ShowHelp();
 
             while (s_running)
             {
@@ -603,6 +603,23 @@ namespace MustangGongShow.TestConsole
                             // Create a new dictionary with the filename and all parameters
                             var bufferParameters = new Dictionary<string, object>();
                             bufferParameters["filename"] = chuckFileEntry.Item1;
+
+                            // Generate a key based on the filename (without extension)
+                            var baseKey = Path.GetFileNameWithoutExtension(chuckFileEntry.Item1);
+
+                            // Check if this key already exists in the buffer and find next available suffix
+                            var uniqueKey = baseKey;
+                            int suffix = 1;
+                            while (s_scoreBuffer.Any(entry => 
+                                entry.Item1 == "add" && 
+                                entry.Item2.ContainsKey("key") && 
+                                entry.Item2["key"].ToString() == uniqueKey))
+                            {
+                                uniqueKey = $"{baseKey}_{suffix}";
+                                suffix++;
+                            }
+
+                            bufferParameters["key"] = uniqueKey;
 
                             // Copy all parameters from the chuck file entry
                             foreach (var param in chuckFileEntry.Item2)
@@ -1285,24 +1302,62 @@ namespace MustangGongShow.TestConsole
 
         static void ShowHelp()
         {
+            Console.WriteLine("ChucK Listener Control Utility - Help");
+            Console.WriteLine("======================================");
+            Console.WriteLine();
+            Console.WriteLine("This utility allows you to control a ChucK listener process, stage .ck files,");
+            Console.WriteLine("and build score buffers that can be sent to the server in batches.");
+            Console.WriteLine();
             Console.WriteLine("Available commands:");
-            Console.WriteLine("  start             - Start ChucK listener process");
-            Console.WriteLine("  stop              - Stop ChucK listener process");
-            Console.WriteLine("  status            - Get ChucK listener status");
-            Console.WriteLine("  show              - Show all .ck files in the listener directory");
-            Console.WriteLine("  add <filename>    - Add a .ck file to the collection");
-            Console.WriteLine("  remove <index>    - Remove a .ck file by its index number");
-            Console.WriteLine("  list              - List currently loaded .ck files and their parameters");
-            Console.WriteLine("  clear             - Clear all loaded .ck files");
-            Console.WriteLine("  play <seconds>    - Send loaded .ck files to server and play for specified seconds");
-            Console.WriteLine("  buffer <cmd>      - Score buffer operations (addfile, addplay, remfile, remove, move, list, copy, clear, save, load, show)");
-
-
-            Console.WriteLine("  exit              - Exit the utility");
-            Console.WriteLine("  help              - Show this help message");
+            Console.WriteLine();
+            Console.WriteLine("ChucK Listener Control:");
+            Console.WriteLine("  start");
+            Console.WriteLine("    Start the ChucK listener process with OscListener.ck");
+            Console.WriteLine();
+            Console.WriteLine("  stop");
+            Console.WriteLine("    Stop the ChucK listener process");
+            Console.WriteLine();
+            Console.WriteLine("  status");
+            Console.WriteLine("    Get the current status of the ChucK listener (running, stopped, PID, etc.)");
+            Console.WriteLine();
+            Console.WriteLine("File Management:");
+            Console.WriteLine("  show");
+            Console.WriteLine("    Show all .ck files available in the listener directory");
+            Console.WriteLine();
+            Console.WriteLine("  add <filename.ck> [param=value ...]");
+            Console.WriteLine("    Add a .ck file to the staging collection with optional parameters");
+            Console.WriteLine("    Example: add mysound.ck freq=440 gain=0.8");
+            Console.WriteLine();
+            Console.WriteLine("  list");
+            Console.WriteLine("    List all currently staged .ck files and their parameters");
+            Console.WriteLine();
+            Console.WriteLine("  remove <index>");
+            Console.WriteLine("    Remove a staged .ck file by its index number");
+            Console.WriteLine("    Example: remove 2");
+            Console.WriteLine();
+            Console.WriteLine("  clear");
+            Console.WriteLine("    Clear all staged .ck files from the collection");
+            Console.WriteLine();
+            Console.WriteLine("  play <seconds>");
+            Console.WriteLine("    Send all staged .ck files to the server and play for the specified duration");
+            Console.WriteLine("    Example: play 10");
+            Console.WriteLine();
+            Console.WriteLine("Score Buffer:");
+            Console.WriteLine("  buffer <cmd>");
+            Console.WriteLine("    Execute score buffer operations. Use 'buffer help' for detailed information.");
+            Console.WriteLine("    Commands: addfile, addplay, remfile, remove, move, list, copy, clear,");
+            Console.WriteLine("              save, load, show, flush, help");
+            Console.WriteLine();
+            Console.WriteLine("General:");
+            Console.WriteLine("  help");
+            Console.WriteLine("    Display this help message");
+            Console.WriteLine();
+            Console.WriteLine("  exit");
+            Console.WriteLine("    Exit the utility (automatically stops ChucK listener if running)");
             Console.WriteLine();
             Console.WriteLine("Deprecated commands:");
-            Console.WriteLine("  send <cmd> <args> - Send OSC message with command and arguments");
+            Console.WriteLine("  send <cmd> <args>");
+            Console.WriteLine("    Send raw OSC message with command and arguments");
             Console.WriteLine();
         }
     }
